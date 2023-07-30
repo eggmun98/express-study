@@ -3,6 +3,7 @@ var express = require("express");
 var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
+const cors = require("cors");
 
 var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/users");
@@ -15,6 +16,7 @@ app.set("view engine", "pug");
 
 app.use(logger("dev"));
 app.use(express.json()); // express는 json 데이터를 못읽음 그래서 json 데이터를 읽는 기능을 불러와야 함
+app.use(cors()); // cors 허용하는 코드
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
