@@ -25,9 +25,6 @@ const base64Auth = authBuffer.toString("base64");
 const apiKey = process.env.NOTION_API_KEY;
 const dbId = process.env.NOTION_DATABASE_ID;
 
-// 이슈 갯수 확인 용
-let count = 0;
-
 // 1. 먼저 get 메소드를 이용하여 지라의 api를 받아 온다.
 // 2. 받아온 데이터들을 가공하여 req.processedData 라는 객체에 담는다.
 // 3. next() 함수를 이용하여 다음 미들웨어 함수를 작동시킨다.
@@ -36,13 +33,21 @@ let count = 0;
 // 6. payload 변수에 노션 JSON 구조에 맞춰서 값을 넣는다.
 // 7. 그리고 노션 api 요청을 하여 노션 Db에 데이터를 추가한다. => 비효율적임 개선 방법을 찾아야함
 
+// axios 사용 방법에는 아래처럼 문자열로 적는 방법이 있음
+// const response = await axios.({
+//   method: "get",
+//   url: `${jiraUrl}/rest/api/2/search`,
+//   headers: {
+//     Authorization: `Basic ${base64Auth}`,
+//     "Content-Type": "application/json",
+//   },
+// });
+
 app.get(
   "/",
   async (req, res, next) => {
     try {
-      const response = await axios({
-        method: "get",
-        url: `${jiraUrl}/rest/api/2/search`,
+      const response = await axios.get(`${jiraUrl}/rest/api/2/search`, {
         headers: {
           Authorization: `Basic ${base64Auth}`,
           "Content-Type": "application/json",
@@ -61,18 +66,16 @@ app.get(
         };
       });
 
-      next(); // 다음 미들웨어 함수에게 제어를 전달하는 함수이다. 즉 다음 미들웨어 함수에게 권한을 넘긴다.
+      next(); // 다음 미들웨어 함수에게 제어를 전달하는 함수이다. 즉 다음 미들웨어 함수로 넘어간다.
     } catch (error) {
       console.error(error);
       res.status(500).send(error.message);
     }
-  },
+  }, // 두번째 미들웨어 함수
   async (req, res) => {
     try {
       for (let issue of req.processedData) {
         const { id, title, state, createDate, explanation } = issue;
-
-        count++;
 
         const payload = {
           parent: { database_id: dbId },
@@ -87,13 +90,9 @@ app.get(
               ],
             },
             State: {
-              rich_text: [
-                {
-                  text: {
-                    content: state,
-                  },
-                },
-              ],
+              select: {
+                name: state,
+              },
             },
             CreateDate: {
               rich_text: [
