@@ -5,6 +5,7 @@ const axios = require("axios");
 const app = express();
 const port = 3001; // 서버 포트번호
 const morgan = require("morgan");
+const { createPayload, createPayload02 } = require("./payload");
 
 // express에서 json 사용하려면 json()함수 사용해야 함
 app.use(express.json());
@@ -76,61 +77,21 @@ app.get(
     try {
       for (let issue of req.processedData) {
         const { id, title, state, createDate, explanation } = issue;
+        console.log(issue);
 
-        const payload = {
-          parent: { database_id: dbId },
-          properties: {
-            Title: {
-              title: [
-                {
-                  text: {
-                    content: title,
-                  },
-                },
-              ],
+        await axios.post(
+          "https://api.notion.com/v1/pages",
+          explanation
+            ? createPayload(title, state, createDate, id, explanation, dbId)
+            : createPayload02(title, state, createDate, id, dbId),
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+              "Notion-Version": "2022-06-28",
             },
-            State: {
-              select: {
-                name: state,
-              },
-            },
-            CreateDate: {
-              rich_text: [
-                {
-                  text: {
-                    content: createDate,
-                  },
-                },
-              ],
-            },
-            IssueID: {
-              rich_text: [
-                {
-                  text: {
-                    content: id,
-                  },
-                },
-              ],
-            },
-            Explanation: {
-              rich_text: [
-                {
-                  text: {
-                    content: explanation,
-                  },
-                },
-              ],
-            },
-          },
-        };
-
-        await axios.post("https://api.notion.com/v1/pages", payload, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "Notion-Version": "2022-06-28",
-          },
-        });
+          }
+        );
       }
 
       res.send("모든 이슈가 성공적으로 담겼습니다.");
