@@ -13,20 +13,21 @@ app.use(express.json());
 // 오류 같은거 알려주는 도구
 app.use(morgan("tiny"));
 
+// 노션 api 인증 정보 변수
+const apiKey = process.env.NOTION_API_KEY;
+const dbId = process.env.NOTION_DATABASE_ID;
+
 // 지라 api 인증 정보 변수
 const jiraUrl = process.env.JIRA_URL;
 const jiraUsername = process.env.JIRA_USERNAME;
 const jiraUserPassword = process.env.JIRA_PASSWORD;
 
-// Base64 방식으로 인코딩 후 스트링으로 변환
-const authBuffer = Buffer.from(`${jiraUsername}:${jiraUserPassword}`);
+// Base64 방식으로 인코딩 후 스트링으로 변환 => 지라 api 요청할때 사용
+const authBuffer = Buffer.from(`${jiraUsername}:${jiraUserPassword}`); // 유저 아이디와 유저 비밀번호 => 비밀번호 대신에 api key 적을 수 있음
 const base64Auth = authBuffer.toString("base64");
 
-// 노션 api 인증 정보 변수
-const apiKey = process.env.NOTION_API_KEY;
-const dbId = process.env.NOTION_DATABASE_ID;
-
-let startAt = 0; // 몇번째 글부터 가져올건지 => 필요 없을 듯
+// 지라 api 요청 설정
+let startAt = 0; // 몇번째 글부터 가져올건지 => 안적어도 됨!
 const maxResults = 200; // 한 번에 가져올 수 있는 최대 이슈 수
 const latestDate = "2023-07-01"; // 최신 날짜 // 이 부분을 유동적으로 바꿔야 함 즉 노션 db의 최신 날짜를 가져와서 바꾸기
 
@@ -34,6 +35,7 @@ const latestDate = "2023-07-01"; // 최신 날짜 // 이 부분을 유동적으�
 const jql = encodeURIComponent(
   `created >= "${latestDate}" ORDER BY created ASC`
 );
+
 // jql 문법
 // created >= "2023-01-01"  2023년 1월 1일 이후의 데이터만 가져와라
 // ORDER BY created DESC' 내림차순으로
@@ -64,38 +66,6 @@ app.get("/notion", async (req, res) => {
     res.status(500).send(error.message);
   }
 });
-
-// 노션 db 가져오는 로직 한개만 가져옴
-app.get("/notion02", async (req, res) => {
-  try {
-    const response = await axios.get(
-      `https://api.notion.com/v1/databases/${dbId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "Notion-Version": "2022-06-28",
-        },
-      }
-    );
-    res.send(response.data);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send(error.message);
-  }
-});
-
-//
-
-// 지라 api로 이슈 가져온 후 => 노션 db에 저장하는 로직
-// 1. 먼저 get 메소드를 이용하여 지라의 api를 받아 온다.
-// 2. 받아온 데이터들을 가공하여 req.processedData 라는 객체에 담는다.
-// 3. next() 함수를 이용하여 다음 미들웨어 함수를 작동시킨다.
-// 4. req.processedData 객체를 반복문을 돌린다.
-// 5. 그리고 구조분해할당을 해준다.
-// 6. payload 변수에 노션 JSON 구조에 맞춰서 값을 넣는다.
-// 7. 그리고 노션 api 요청을 하여 노션 Db에 데이터를 추가한다. => 개선해야 함 => 지라 이슈 id와
-// 노션 db id를 비교해서 다른거만 db에 추가해야 함
 
 app.get(
   "/",
