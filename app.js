@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config(); // 환경변수 설정 라이브러리
 
 const express = require("express");
 const axios = require("axios");
@@ -39,7 +39,7 @@ const jql = encodeURIComponent(
 // ORDER BY created DESC' 내림차순으로
 // ORDER BY created ASC 오름차순으로
 
-// 노션 db 가져오는 로직 100개 가져옴
+// 노션 db 가져오는 로직 100개 가져옴 => 1개만 가져오는 걸로 수정하기
 app.get("/notion", async (req, res) => {
   try {
     const response = await axios.post(
@@ -54,7 +54,10 @@ app.get("/notion", async (req, res) => {
       }
     );
     res.send(
-      response.data.results[0].properties.CreateDate.rich_text[0].plain_text
+      // response.data.results[0].properties.CreateDate.rich_text[0].plain_text,
+      Number(
+        response.data.results[0].properties.IssueID.rich_text[0].text.content
+      )
     );
   } catch (error) {
     console.error(error);
