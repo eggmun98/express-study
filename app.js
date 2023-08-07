@@ -41,8 +41,8 @@ const jql = encodeURIComponent(
 // ORDER BY created DESC' 내림차순으로
 // ORDER BY created ASC 오름차순으로
 
-// 노션 db 가져오는 로직 100개 가져옴 => 1개만 가져오는 걸로 수정하기
-app.get("/notion", async (req, res) => {
+// 노션 마지막 ID를 가져오는 함수 => 데이터가 100개씩 가져오니 1개씩 가져오는법 찾기
+async function getLatestNotionId() {
   try {
     const response = await axios.post(
       `https://api.notion.com/v1/databases/${dbId}/query`,
@@ -55,58 +55,53 @@ app.get("/notion", async (req, res) => {
         },
       }
     );
-    res.send(
-      // response.data.results[0].properties.CreateDate.rich_text[0].plain_text,
-      Number(
-        response.data.results[0].properties.IssueID.rich_text[0].text.content
-      )
+    return Number(
+      response.data.results[0].properties.IssueID.rich_text[0].text.content
     );
   } catch (error) {
-    console.error(error);
-    res.status(500).send(error.message);
+    console.error(error.message);
+    throw error;
   }
-});
+}
 
-app.get(
-  "/",
-  async (req, res, next) => {
-    try {
-      const response = await axios.get(
-        `${jiraUrl}/rest/api/2/search?jql=${jql}&startAt=${startAt}&maxResults=${maxResults}`,
-        {
-          headers: {
-            Authorization: `Basic ${base64Auth}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+app.get("/", async (req, res) => {
+  try {
+    // 1. 노션에서 최신 아이디 가져오기
+    const latestNotionId = await getLatestNotionId();
 
-      req.processedData = response.data.issues.map((issue) => {
-        return {
-          id: issue.id,
-          title: issue.fields.summary,
-          createDate: issue.fields.created.slice(0, 10),
-          state: issue.fields.status.name,
-          explanation: issue.fields.description
-            ? issue.fields.description.replaceAll(/\\r|\\n|\\/g, "")
-            : null,
-        };
-      });
-      next(); // 다음 미들웨어 함수에게 제어를 전달하는 함수이다. 즉 다음 미들웨어 함수로 넘어간다.
-    } catch (error) {
-      console.error(error);
-      res.status(500).send(error.message);
-    }
-  }, // 두번째 미들웨어 함수
-  async (req, res) => {
-    try {
-      for (let issue of req.processedData) {
-        const { id, title, state, createDate, explanation } = issue;
-        console.log(issue);
+    // 2. 지라에서 이슈 가져오기 =>  200가 가져오도록 설정했음
+    const jiraResponse = await axios.get(
+      `${jiraUrl}/rest/api/2/search?jql=${jql}&startAt=${startAt}&maxResults=${maxResults}`,
+      {
+        headers: {
+          Authorization: `Basic ${base64Auth}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
+    const issues = jiraResponse.data.issues.map((issue) => ({
+      id: issue.id,
+      title: issue.fields.summary,
+      createDate: issue.fields.created.slice(0, 10),
+      state: issue.fields.status.name,
+      explanation: issue.fields.description
+        ? issue.fields.description.replaceAll(/\\r|\\n|\\/g, "")
+        : null,
+    }));
+
+    // 3. 노션 DB의 최신 아이디와 지라의 이슈 아이디 비교
+    for (let issue of issues) {
+      if (Number(issue.id) > latestNotionId) {
         await axios.post(
           "https://api.notion.com/v1/pages",
-          createPayload02(title, state, createDate, id, dbId),
+          createPayload02(
+            issue.title,
+            issue.state,
+            issue.createDate,
+            issue.id,
+            dbId
+          ),
           {
             headers: {
               Authorization: `Bearer ${apiKey}`,
@@ -116,14 +111,14 @@ app.get(
           }
         );
       }
-
-      res.send("모든 이슈가 성공적으로 담겼습니다.");
-    } catch (error) {
-      console.error(error);
-      res.status(500).send(error.message);
     }
+
+    res.send("성공적으로 노션 db에 이슈를 추가하였습니다.");
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
   }
-);
+});
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
