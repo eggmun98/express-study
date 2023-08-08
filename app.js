@@ -5,7 +5,12 @@ const axios = require("axios");
 const app = express();
 const port = 3001; // 서버 포트번호
 const morgan = require("morgan");
-const { createPayload, createPayload02 } = require("./payload");
+const {
+  createPayload,
+  createPayload02,
+  createPayload03,
+  createPayload04,
+} = require("./payload");
 
 // express에서 json 사용하려면 json()함수 사용해야 함
 app.use(express.json());
@@ -34,7 +39,6 @@ const latestDate = "2023-07-02"; // 최신 날짜
 const jql = encodeURIComponent(
   `created >= "${latestDate}" ORDER BY created ASC`
 );
-
 // jql 문법
 // created >= "2023-01-01"  2023년 1월 1일 이후의 데이터만 가져와라
 // ORDER BY created DESC' 내림차순으로
@@ -80,12 +84,12 @@ const updateIssues = async () => {
     );
 
     // 가져온 지라의 이슈들을 보기 좋게 가공함
-    const issues = jiraResponse.data.issues.map((issue) => ({
-      id: issue.id,
-      title: issue.fields.summary,
-      createDate: issue.fields.created.slice(0, 10),
-      state: issue.fields.status.name,
-      explanation: issue.fields.description
+    const issues = jiraResponse.data.issues.map((el) => ({
+      id: el.id,
+      title: el.fields.summary,
+      createDate: el.fields.created.slice(0, 10),
+      state: el.fields.status.name,
+      explanation: el.fields.description
         ? issue.fields.description.replaceAll(/\\r|\\n|\\/g, "")
         : null,
     }));
@@ -114,7 +118,7 @@ const updateIssues = async () => {
       }
     }
 
-    console.log("성공적으로 노션 db에 이슈를 추가하였습니다.");
+    console.log("성공적으로 노션 db에 이슈를 변경하였습니다.");
   } catch (error) {
     console.error(error);
   }
@@ -129,6 +133,111 @@ const updateIssuesRepeatedly = async () => {
     console.error(error.message);
   }
 };
+
+//
+//
+//
+
+// 기존 노션 db 이슈 업데이트 코드
+// const today = Number(new Date("2023-08-08")); // 이 시간 기준으로 잡는다.
+const today = new Date("2023-08-08").setHours(0, 0, 0, 0); // 이 시간 기준으로 잡는다2.
+
+app.get("/test", async (req, res) => {
+  try {
+    // 먼저 지라의 api를 가져온다.
+    const response = await axios({
+      method: "get",
+      url: `${jiraUrl}/rest/api/2/search?jql=${jql}&startAt=${startAt}&maxResults=${maxResults}`,
+      headers: {
+        Authorization: `Basic ${base64Auth}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    // 가져온 지라 이슈의 날짜와 today와 비교를해서 필터링 처리를 한다.
+    const issues = response.data.issues
+      .filter((el) => Number(new Date(el.fields.updated)) > today)
+      .map((el) => ({
+        id: el.id,
+        title: el.fields.summary,
+        createDate: el.fields.created.slice(0, 10),
+        state: el.fields.status.name,
+        explanation: el.fields.description
+          ? el.fields.description.replaceAll(/\\r|\\n|\\/g, "")
+          : null,
+        updateIssue: el.fields.updated,
+      }));
+
+    res.send(issues);
+
+    // 노션 db의 데이터를 가져온다 100개
+    const response2 = await axios.post(
+      "https://api.notion.com/v1/databases/002e536f493e416b96826360e4a1ba74/query",
+      {},
+      {
+        headers: {
+          Authorization:
+            "Bearer secret_FUTaguiG5ogDG7V9pD7eHl1ENERxdDXtjd6oPxMr2q8",
+          "Content-Type": "application/json",
+          "Notion-Version": "2022-06-28",
+        },
+      }
+    );
+
+    // 가져온 노션 db 데이터들을 정리한다.
+    const result = response2.data.results.map((el) => ({
+      dbID: el.id,
+      issueID: el.properties.IssueID.rich_text[0].text.content,
+      title: el.properties.Title.title[0].text.content,
+      createDate: el.properties.CreateDate.rich_text[0].text.content,
+      state: el.properties.State.select.name,
+      // explanation: el.properties.Explanation.rich_text[0].text.content
+      //   ? el.properties.Explanation.rich_text[0].text.content
+      //   : " ",
+    }));
+
+    // 가져온 이슈와 가져온 노션db들을 아이디값을 비교해서 같은 아이디값을 가진 노션db 페이지를 찾아서
+    // 그 노션db 페이지를 변경하는 로직
+    for (i of issues) {
+      for (r of result) {
+        if (i.id === r.issueID) {
+          await axios.patch(
+            `https://api.notion.com/v1/pages/${r.dbID}`,
+            createPayload03("** 이슈 변경 로직 자동화 성공 **"),
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                "Notion-Version": "2022-06-28",
+              },
+            }
+          );
+          break;
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
+// db변경 로직
+app.get("/test2", async (req, res) => {
+  const pageId = "5e847597-fd99-40e7-98e4-77ed49ff03c2";
+
+  await axios.patch(
+    `https://api.notion.com/v1/pages/${pageId}`,
+    createPayload03("제목 변경 성공2"),
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+      },
+    }
+  );
+});
 
 // "/" 경로에서 작동
 app.get("/", (req, res) => {
