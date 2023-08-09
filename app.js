@@ -3,7 +3,6 @@ require("dotenv").config(); // 환경변수 설정 라이브러리
 const express = require("express");
 const axios = require("axios");
 const app = express();
-const port = 3001; // 서버 포트번호
 const morgan = require("morgan");
 const {
   createPayload,
@@ -39,10 +38,18 @@ const latestDate = "2023-07-02"; // 최신 날짜
 const jql = encodeURIComponent(
   `created >= "${latestDate}" ORDER BY created ASC`
 );
+
 // jql 문법
 // created >= "2023-01-01"  2023년 1월 1일 이후의 데이터만 가져와라
 // ORDER BY created DESC' 내림차순으로
 // ORDER BY created ASC 오름차순으로
+// 아래는 프로젝트 별로 이슈를 가져오는 방법임
+// const projectKey = 'YOUR_PROJECT_KEY'; // 프로젝트 키
+// const jql = encodeURIComponent(`project = "${projectKey}" ORDER BY created ASC`);
+
+//
+//
+//
 
 // 노션 마지막 ID를 가져오는 함수 => 데이터가 100개씩 가져오니 1개씩 가져오는법 찾기
 const getLatestNotionId = async () => {
@@ -70,9 +77,10 @@ const getLatestNotionId = async () => {
 // 초기에 노션 db에 데이터가 한줄이라도 있어야 작동 => C
 const updateIssues = async () => {
   try {
-    const latestNotionId = await getLatestNotionId(); // 노션db에 있는 가장 최신의 id값을 가져옴
+    // 1. 노션에서 최신 아이디 가져오기
+    const latestNotionId = await getLatestNotionId();
 
-    // 지라의 이슈들을 가져옴
+    // 2. 지라에서 이슈 가져오기 =>  200가 가져오도록 설정했음
     const jiraResponse = await axios.get(
       `${jiraUrl}/rest/api/2/search?jql=${jql}&startAt=${startAt}&maxResults=${maxResults}`,
       {
@@ -83,24 +91,22 @@ const updateIssues = async () => {
       }
     );
 
-    // 가져온 지라의 이슈들을 보기 좋게 가공함
-    const issues = jiraResponse.data.issues.map((el) => ({
-      id: el.id,
-      title: el.fields.summary,
-      createDate: el.fields.created.slice(0, 10),
-      state: el.fields.status.name,
-      explanation: el.fields.description
+    const issues = jiraResponse.data.issues.map((issue) => ({
+      id: issue.id,
+      title: issue.fields.summary,
+      createDate: issue.fields.created.slice(0, 10),
+      state: issue.fields.status.name,
+      explanation: issue.fields.description
         ? issue.fields.description.replaceAll(/\\r|\\n|\\/g, "")
         : null,
     }));
 
-    // 이슈 아이디를 비교해서 노션db에 있는 최신 이슈 id값보다 큰 아이디만 노션db에 추가
+    // 3. 노션 DB의 최신 아이디와 지라의 이슈 아이디 비교
     for (let issue of issues) {
       if (Number(issue.id) > latestNotionId) {
         await axios.post(
           "https://api.notion.com/v1/pages",
           createPayload02(
-            // JSON 구조를 반환하는 함수
             issue.title,
             issue.state,
             issue.createDate,
@@ -117,10 +123,9 @@ const updateIssues = async () => {
         );
       }
     }
-
-    console.log("성공적으로 노션 db에 이슈를 변경하였습니다.");
   } catch (error) {
     console.error(error);
+    res.status(500).send(error.message);
   }
 };
 
@@ -135,14 +140,19 @@ const updateIssuesRepeatedly = async () => {
 };
 
 //
+
 //
+
+//
+
+//
+
 //
 
 // 기존 노션 db 이슈 업데이트 코드
-// const today = Number(new Date("2023-08-08")); // 이 시간 기준으로 잡는다.
-const today = new Date("2023-08-08").setHours(0, 0, 0, 0); // 이 시간 기준으로 잡는다2.
+const today = new Date().setHours(0, 0, 0, 0); // 이 시간 기준으로 잡는다2.
 
-app.get("/test", async (req, res) => {
+const editIssues = async () => {
   try {
     // 먼저 지라의 api를 가져온다.
     const response = await axios({
@@ -168,8 +178,6 @@ app.get("/test", async (req, res) => {
         updateIssue: el.fields.updated,
       }));
 
-    res.send(issues);
-
     // 노션 db의 데이터를 가져온다 100개
     const response2 = await axios.post(
       "https://api.notion.com/v1/databases/002e536f493e416b96826360e4a1ba74/query",
@@ -193,7 +201,7 @@ app.get("/test", async (req, res) => {
       state: el.properties.State.select.name,
       // explanation: el.properties.Explanation.rich_text[0].text.content
       //   ? el.properties.Explanation.rich_text[0].text.content
-      //   : " ",
+      //   : "",
     }));
 
     // 가져온 이슈와 가져온 노션db들을 아이디값을 비교해서 같은 아이디값을 가진 노션db 페이지를 찾아서
@@ -203,7 +211,7 @@ app.get("/test", async (req, res) => {
         if (i.id === r.issueID) {
           await axios.patch(
             `https://api.notion.com/v1/pages/${r.dbID}`,
-            createPayload03("** 이슈 변경 로직 자동화 성공 **"),
+            createPayload03("** 이슈 변경 로직 자동화 성공7 **"),
             {
               headers: {
                 Authorization: `Bearer ${apiKey}`,
@@ -220,33 +228,18 @@ app.get("/test", async (req, res) => {
     console.error(error);
     res.status(500).send(error.message);
   }
-});
+};
 
-// db변경 로직
-app.get("/test2", async (req, res) => {
-  const pageId = "5e847597-fd99-40e7-98e4-77ed49ff03c2";
+const issuesRepeatedly = async () => {
+  try {
+    await updateIssues();
+    await editIssues();
+    setTimeout(issuesRepeatedly, 30000);
+  } catch (error) {
+    console.error(error.message);
+  }
+};
 
-  await axios.patch(
-    `https://api.notion.com/v1/pages/${pageId}`,
-    createPayload03("제목 변경 성공2"),
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "Notion-Version": "2022-06-28",
-      },
-    }
-  );
-});
-
-// "/" 경로에서 작동
-app.get("/", (req, res) => {
-  updateIssuesRepeatedly(); // 처음 호출
-  res.send("작동을 시작했습니다.");
-});
-
-app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
-});
+issuesRepeatedly();
 
 module.exports = app;
