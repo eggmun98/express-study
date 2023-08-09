@@ -10,6 +10,7 @@ const {
   createPayload03,
   createPayload04,
 } = require("./payload");
+require("dotenv").config(); // 환경변수 설정 라이브러리
 
 // express에서 json 사용하려면 json()함수 사용해야 함
 app.use(express.json());

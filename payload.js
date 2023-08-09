@@ -88,7 +88,69 @@ const createPayload02 = (title, state, createDate, id, dbId) => {
   };
 };
 
+const createPayload03 = (title) => {
+  return {
+    properties: {
+      Title: {
+        title: [
+          {
+            text: {
+              content: title,
+            },
+          },
+        ],
+      },
+    },
+  };
+};
+
+const createPayload04 = (title, state, createDate, id, dbId) => {
+  return {
+    parent: { database_id: dbId },
+    properties: {
+      Title: {
+        title: [
+          {
+            text: {
+              content: title,
+            },
+          },
+        ],
+      },
+      State: {
+        rich_text: [
+          {
+            text: {
+              content: state,
+            },
+          },
+        ],
+      },
+      CreateDate: {
+        rich_text: [
+          {
+            text: {
+              content: createDate,
+            },
+          },
+        ],
+      },
+      IssueID: {
+        rich_text: [
+          {
+            text: {
+              content: id,
+            },
+          },
+        ],
+      },
+    },
+  };
+};
+
 module.exports = {
   createPayload,
   createPayload02,
+  createPayload03,
+  createPayload04,
 };
