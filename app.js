@@ -31,9 +31,10 @@ const authBuffer = Buffer.from(`${jiraUsername}:${jiraUserPassword}`); // 유저
 const base64Auth = authBuffer.toString("base64");
 
 // 지라 api 요청 설정
-let startAt = 0; // 몇번째 글부터 가져올건지 => 안적어도 됨!
+const startAt = 0; // 몇번째 글부터 가져올건지 => 안적어도 됨!
 const maxResults = 200; // 한 번에 가져올 수 있는 최대 이슈 수
-const latestDate = "2023-07-02"; // 최신 날짜
+const latestDate = "2023-07-02"; // 최신 날짜 => 이 기준으로 이슈들을 가져옴
+
 // 지라 JQL 설정
 const jql = encodeURIComponent(
   `created >= "${latestDate}" ORDER BY created ASC`
@@ -46,10 +47,6 @@ const jql = encodeURIComponent(
 // 아래는 프로젝트 별로 이슈를 가져오는 방법임
 // const projectKey = 'YOUR_PROJECT_KEY'; // 프로젝트 키
 // const jql = encodeURIComponent(`project = "${projectKey}" ORDER BY created ASC`);
-
-//
-//
-//
 
 // 노션 마지막 ID를 가져오는 함수 => 데이터가 100개씩 가져오니 1개씩 가져오는법 찾기
 const getLatestNotionId = async () => {
@@ -75,7 +72,7 @@ const getLatestNotionId = async () => {
 };
 
 // 초기에 노션 db에 데이터가 한줄이라도 있어야 작동 => C
-const updateIssues = async () => {
+const newIssues = async () => {
   try {
     // 1. 노션에서 최신 아이디 가져오기
     const latestNotionId = await getLatestNotionId();
@@ -126,16 +123,6 @@ const updateIssues = async () => {
   } catch (error) {
     console.error(error);
     res.status(500).send(error.message);
-  }
-};
-
-// 반복하기 위해 재귀의 원리 사용
-const updateIssuesRepeatedly = async () => {
-  try {
-    await updateIssues(); // 업데이트 작업 기다리기
-    setTimeout(updateIssuesRepeatedly, 10000); // 업데이트가 성공적으로 완료된 후, 10초 후에 다시 호출
-  } catch (error) {
-    console.error(error.message);
   }
 };
 
@@ -230,16 +217,16 @@ const editIssues = async () => {
   }
 };
 
-const issuesRepeatedly = async () => {
+const issuesServer = async () => {
   try {
-    await updateIssues();
+    await newIssues();
     await editIssues();
-    setTimeout(issuesRepeatedly, 30000);
+    setTimeout(issuesServer, 30000);
   } catch (error) {
     console.error(error.message);
   }
 };
 
-issuesRepeatedly();
+issuesServer(); // 서버 시작시 자동으로 실행됨
 
 module.exports = app;
