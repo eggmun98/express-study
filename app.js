@@ -66,9 +66,8 @@ const getLatestNotionId = async () => {
     return Number(
       response.data.results[0].properties.IssueID.rich_text[0].text.content
     );
-  } catch (error) {
-    console.error(error.message);
-    throw error;
+  } catch {
+    return "1"; // 만약에 노션db에 아이디가 없을 경우에 1을 할당 => newIssues 로직은 id값이 있어야 작동하므로 필요함
   }
 };
 
