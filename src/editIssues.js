@@ -1,4 +1,4 @@
-const { createPayload03 } = require("./payload");
+const { createPayload03, createPayload05 } = require("./payload");
 const axios = require("axios");
 require("dotenv").config(); // 환경변수 설정 라이브러리
 
@@ -80,7 +80,7 @@ const editIssues = async () => {
         if (i.id === r.issueID) {
           await axios.patch(
             `https://api.notion.com/v1/pages/${r.dbID}`,
-            createPayload03("** 이슈 변경 로직 자동화 성공7 **"),
+            createPayload03(i.title),
             {
               headers: {
                 Authorization: `Bearer ${apiKey}`,

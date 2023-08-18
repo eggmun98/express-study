@@ -32,45 +32,45 @@ issuesServer(); // 서버 시작시 자동으로 실행됨
 // 현재 문제점 이슈 업데이트는 최대 100개 검사밖에 못해서 한계가 있음 => 개선하려면 노션db 가져오는거 추가로 요청해야 함
 // => 근데 프로젝트별로 이슈를 나눌거니까 괜찮을거 같음
 
-axios
-  .post(
-    "https://api.notion.com/v1/pages",
-    {
-      parent: { page_id: pageId },
-      properties: {
-        title: {
-          title: [
-            {
-              type: "text",
-              text: { content: "page제목이에요4" },
-            },
-          ],
-        },
-      },
-      children: [
-        {
-          object: "block",
-          type: "paragraph",
-          paragraph: {
-            rich_text: [
-              {
-                type: "text",
-                text: { content: "페이지 내용이에요~~~~~~~~~~~~~~₩." },
-              },
-            ],
-          },
-        },
-      ],
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Notion-Version": "2022-06-28",
-        "Content-Type": "application/json",
-      },
-    }
-  )
-  .then((response) => console.log("Page Created:", response.data))
-  .catch((error) => console.error("Error Creating Page:", error));
+// axios
+//   .post(
+//     "https://api.notion.com/v1/pages",
+//     {
+//       parent: { page_id: pageId },
+//       properties: {
+//         title: {
+//           title: [
+//             {
+//               type: "text",
+//               text: { content: "page제목이에요4" },
+//             },
+//           ],
+//         },
+//       },
+//       children: [
+//         {
+//           object: "block",
+//           type: "paragraph",
+//           paragraph: {
+//             rich_text: [
+//               {
+//                 type: "text",
+//                 text: { content: "페이지 내용이에요~~~~~~~~~~~~~~₩." },
+//               },
+//             ],
+//           },
+//         },
+//       ],
+//     },
+//     {
+//       headers: {
+//         Authorization: `Bearer ${apiKey}`,
+//         "Notion-Version": "2022-06-28",
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   )
+//   .then((response) => console.log("Page Created:", response.data))
+//   .catch((error) => console.error("Error Creating Page:", error));
 
 module.exports = app;
