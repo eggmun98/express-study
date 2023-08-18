@@ -1,8 +1,8 @@
 require("dotenv").config(); // 환경변수 설정 라이브러리
+const config = require("../public/config");
 const axios = require("axios");
 
-const apiKey = process.env.NOTION_API_KEY;
-const dbId = process.env.NOTION_DATABASE_ID;
+const { apiKey, dbId } = config;
 
 // 노션 db 가장 위에 있는 데이터의 날짜를 가져오는 로직
 const getLatestNotionId = async () => {

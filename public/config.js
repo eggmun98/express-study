@@ -13,7 +13,7 @@ const dbId = process.env.NOTION_DATABASE_ID;
 
 // 지라 api 요청 설정
 const startAt = 0; // 몇번째 글부터 가져올건지 => 안적어도 됨!
-const maxResults = 200; // 한 번에 가져올 수 있는 최대 이슈 수
+const maxResults = 300; // 한 번에 가져올 수 있는 최대 이슈 수
 const latestDate = "2023-07-02"; // 최신 날짜 => 이 기준으로 이슈들을 가져옴
 
 // 지라 JQL 설정
@@ -28,22 +28,17 @@ const jql = encodeURIComponent(
 // 아래는 프로젝트 별로 이슈를 가져오는 방법임
 // const projectKey = 'YOUR_PROJECT_KEY'; // 프로젝트 키
 // const jql = encodeURIComponent(`project = "${projectKey}" ORDER BY created ASC`);
+// `encodeURIComponent`는 JQL 쿼리를 URL에 안전하게 포함시키기 위해 사용됩니다(인코딩)
 
-const configJira = {
+const config = {
   jiraUrl,
   base64Auth,
   startAt,
   maxResults,
   latestDate,
   jql,
-};
-
-const configNotion = {
   apiKey,
   dbId,
 };
 
-module.exports = {
-  configJira,
-  configNotion,
-};
+module.exports = config;

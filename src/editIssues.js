@@ -1,23 +1,9 @@
-const { createPayload03, createPayload05 } = require("./payload");
+const { createPayload02 } = require("./payload");
 const axios = require("axios");
 require("dotenv").config(); // 환경변수 설정 라이브러리
+const config = require("../public/config");
 
-const jiraUrl = process.env.JIRA_URL;
-const jiraUsername = process.env.JIRA_USERNAME;
-const jiraUserPassword = process.env.JIRA_PASSWORD;
-
-const authBuffer = Buffer.from(`${jiraUsername}:${jiraUserPassword}`); // 유저 아이디와 유저 비밀번호 => 비밀번호 대신에 api key 적을 수 있음
-const base64Auth = authBuffer.toString("base64");
-
-const apiKey = process.env.NOTION_API_KEY;
-
-const startAt = 0; // 몇번째 글부터 가져올건지 => 안적어도 됨!
-const maxResults = 300; // 한 번에 가져올 수 있는 최대 이슈 수
-const latestDate = "2023-07-02"; // 최신 날짜 => 이 기준으로 이슈들을 가져옴
-const jql = encodeURIComponent(
-  `created >= "${latestDate}" ORDER BY created ASC`
-);
-
+const { jiraUrl, base64Auth, apiKey, startAt, maxResults, jql } = config;
 const today = new Date().setHours(0, 0, 0, 0); // 이 시간 기준으로 잡는다
 
 // 변경된 이슈룰 감지해서 노션 db를 수정하는 로직
@@ -48,7 +34,7 @@ const editIssues = async () => {
       }));
 
     // 노션 db의 데이터를 가져온다 100개
-    const response2 = await axios.post(
+    const notionResponse = await axios.post(
       "https://api.notion.com/v1/databases/002e536f493e416b96826360e4a1ba74/query",
       {},
       {
@@ -62,15 +48,12 @@ const editIssues = async () => {
     );
 
     // 가져온 노션 db 데이터들을 정리한다.
-    const result = response2.data.results.map((el) => ({
+    const result = notionResponse.data.results.map((el) => ({
       dbID: el.id,
       issueID: el.properties.IssueID.rich_text[0].text.content,
       title: el.properties.Title.title[0].text.content,
       createDate: el.properties.CreateDate.rich_text[0].text.content,
-      state: el.properties.State.select.name,
-      // explanation: el.properties.Explanation.rich_text[0].text.content
-      //   ? el.properties.Explanation.rich_text[0].text.content
-      //   : "",
+      state: el.properties.State.rich_text[0].text.content,
     }));
 
     // 가져온 이슈와 가져온 노션db들을 아이디값을 비교해서 같은 아이디값을 가진 노션db 페이지를 찾아서
@@ -80,7 +63,7 @@ const editIssues = async () => {
         if (i.id === r.issueID) {
           await axios.patch(
             `https://api.notion.com/v1/pages/${r.dbID}`,
-            createPayload03(i.title),
+            createPayload02(i.title, i.state),
             {
               headers: {
                 Authorization: `Bearer ${apiKey}`,
