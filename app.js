@@ -1,5 +1,5 @@
 require("dotenv").config(); // 환경변수 설정 라이브러리
-
+const readline = require("readline");
 const express = require("express");
 const app = express();
 const morgan = require("morgan");
@@ -35,6 +35,12 @@ app.use(morgan("tiny"));
 // 현재 문제점 이슈 업데이트는 최대 100개 검사밖에 못해서 한계가 있음 => 개선하려면 노션db 가져오는거 추가로 요청해야 함
 // => 근데 프로젝트별로 이슈를 나눌거니까 괜찮을거 같음
 
+// 터미널 명령어 입력을 위한 readline 인터페이스 생성
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
 const apiKey = process.env.NOTION_API_KEY;
 const pageId = process.env.NOTION_PAGE_ID04;
 
@@ -69,19 +75,29 @@ async function createPage(parentId, title) {
 }
 
 app.listen(PORT, () => {
-  const topPageId = pageId;
+  console.log("서버가 실행되었습니다.");
 
-  createPage(topPageId, "Child Page Title")
-    .then((childPageId) => {
-      console.log(`Created child page with ID: ${childPageId}`);
-      return createPage(childPageId, "Grandchild Page Title");
-    })
-    .then((grandchildPageId) => {
-      console.log(`Created grandchild page with ID: ${grandchildPageId}`);
-    })
-    .catch((error) => {
-      console.error("Error:", error);
-    });
+  rl.question("자식 페이지의 이름을 입력하세요: ", (childTitle) => {
+    createPage(pageId, childTitle)
+      .then((childPageId) => {
+        console.log(`자식 페이지 ID: ${childPageId}`);
+        rl.question("손자 페이지의 이름을 입력하세요: ", (grandchildTitle) => {
+          createPage(childPageId, grandchildTitle)
+            .then((grandchildPageId) => {
+              console.log(`손자 페이지 ID: ${grandchildPageId}`);
+              rl.close(); // readline 인터페이스 종료
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              rl.close();
+            });
+        });
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        rl.close();
+      });
+  });
 });
 
 module.exports = app;
