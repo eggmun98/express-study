@@ -51,53 +51,56 @@ const HEADERS = {
   "Notion-Version": "2022-06-28",
 };
 
-async function createPage(parentId, title) {
-  try {
-    const response = await axios.post(
-      NOTION_API_URL,
-      {
-        parent: { page_id: parentId },
-        properties: {
-          title: {
-            title: [{ text: { content: title } }],
-          },
-        },
+const payload = (page_id, title) => {
+  return {
+    parent: { page_id },
+    properties: {
+      title: {
+        title: [{ text: { content: title } }],
       },
-      {
-        headers: HEADERS,
-      }
-    );
+    },
+  };
+};
+
+async function createPage(page_id, title) {
+  try {
+    const response = await axios.post(NOTION_API_URL, payload(page_id, title), {
+      headers: HEADERS,
+    });
 
     return response.data.id;
   } catch (error) {
-    throw new Error("Failed to create page: " + error.message);
+    throw new Error(error.message);
   }
 }
 
-app.listen(PORT, () => {
-  console.log("서버가 실행되었습니다.");
-
-  rl.question("자식 페이지의 이름을 입력하세요: ", (childTitle) => {
-    createPage(pageId, childTitle)
-      .then((childPageId) => {
-        console.log(`자식 페이지 ID: ${childPageId}`);
-        rl.question("손자 페이지의 이름을 입력하세요: ", (grandchildTitle) => {
-          createPage(childPageId, grandchildTitle)
-            .then((grandchildPageId) => {
-              console.log(`손자 페이지 ID: ${grandchildPageId}`);
-              rl.close(); // readline 인터페이스 종료
-            })
-            .catch((error) => {
-              console.error("Error:", error);
-              rl.close();
-            });
-        });
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        rl.close();
-      });
+const askQuestion = (prompt) => {
+  return new Promise((resolve) => {
+    rl.question(prompt, resolve);
   });
+};
+
+app.listen(PORT, async () => {
+  console.log(
+    "1. 자식페이지 이름을 적으세요.(자식 페이지 이름을 다 적었으면 손자 페이지 이름도 입력하세요.)"
+  );
+
+  try {
+    const childTitle = await askQuestion("자식 페이지의 이름을 입력하세요: ");
+    const childPageId = await createPage(pageId, childTitle);
+    console.log(`자식 페이지 ID: ${childPageId}`);
+
+    const grandchildTitle = await askQuestion(
+      "손자 페이지의 이름을 입력하세요: "
+    );
+    const grandchildPageId = await createPage(childPageId, grandchildTitle);
+    console.log(`손자 페이지 ID: ${grandchildPageId}`);
+
+    rl.close();
+  } catch (error) {
+    console.error("Error:", error);
+    rl.close();
+  }
 });
 
 module.exports = app;
