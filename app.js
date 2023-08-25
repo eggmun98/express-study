@@ -103,61 +103,23 @@ app.listen(PORT, async () => {
   }
 });
 
+const notionPageId = async () => {
+  try {
+    const response = await axios.get(
+      `https://api.notion.com/v1/blocks/${process.env.NOTION_PAGE_ID_C}/children`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+          "Notion-Version": "2022-06-28",
+        },
+      }
+    );
+    // 페이지 아이디들만 추출
+    const pageIds = response.data.results.map((el) => el);
+    console.log(pageIds);
+  } catch (error) {
+    console.log(error.message);
+  }
+};
+
 module.exports = app;
-
-// const express = require("express");
-// const axios = require("axios");
-
-// const app = express();
-// const PORT = 3001;
-
-// app.use(express.json());
-// require("dotenv").config();
-
-// const apiKey = process.env.NOTION_API_KEY;
-// const pageId = process.env.NOTION_PAGE_ID04;
-
-// app.listen(PORT, () => {
-//   // 서버가 시작될 때 자동으로 POST 요청을 보냅니다.
-//   // axios
-//   //   .post(
-//   //     "https://api.notion.com/v1/pages",
-//   //     {
-//   //       parent: { page_id: pageId },
-//   //       properties: {
-//   //         title: {
-//   //           title: [
-//   //             {
-//   //               type: "text",
-//   //               text: { content: "page제목이에요4" },
-//   //             },
-//   //           ],
-//   //         },
-//   //       },
-//   //       children: [
-//   //         {
-//   //           object: "block",
-//   //           type: "paragraph",
-//   //           paragraph: {
-//   //             rich_text: [
-//   //               {
-//   //                 type: "text",
-//   //                 text: { content: "페이지 내용이에요~~~~~~~~~~~~~~₩." },
-//   //               },
-//   //             ],
-//   //           },
-//   //         },
-//   //       ],
-//   //     },
-//   //     {
-//   //       headers: {
-//   //         Authorization: `Bearer ${apiKey}`,
-//   //         "Notion-Version": "2022-06-28",
-//   //         "Content-Type": "application/json",
-//   //       },
-//   //     }
-//   //   )
-//   //   .then((response) => console.log("Page Created:", response.data))
-//   //   .catch((error) => console.error("Error Creating Page:", error));
-// });
-// module.exports = app;
