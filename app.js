@@ -14,7 +14,7 @@ const askQuestion = (prompt) =>
 
 // 유저가 선택한 페이지의 아이디를 저장하는 함수
 const getClientIdBySelection = async () => {
-  const selection = await askQuestion("회사를 선택하세요 (A, B, C): ");
+  const selection = await askQuestion("회사를 선택하세요 (A, B, C): "); // (A, B, C) 이것 자동으로 확장가능하게 바꾸기
   const clientId = CLIENT_IDS[selection.toUpperCase()];
 
   if (!clientId) {
@@ -29,7 +29,8 @@ const getClientIdBySelection = async () => {
 const getLowIdBySelection = async () => {
   const page = await notionPageId();
 
-  const lowPageList = page.map((el, dex) => " " + String(dex) + "." + el.title);
+  const lowPageList = page.map((el, dex) => ` ${String(dex)}.${el.title}`);
+
   // 하위 페이지들의 번호와 리스트들을 보여준다.
   const selection = await askQuestion(
     `하위 페이지의 번호를 선택하세요 ${lowPageList} `
@@ -50,9 +51,9 @@ const getLowIdBySelection = async () => {
   }
 };
 
-async function pageLevelPick() {
+const pageLevelPick = async () => {
   return await askQuestion("1: 상위 페이지, 2: 하위 페이지 ");
-}
+};
 
 const notionPageId = async () => {
   try {
@@ -87,7 +88,7 @@ const notionServer = async () => {
     const userPick = await pageLevelPick();
 
     if (userPick === "2") {
-      // 1. 하위 페이지의 리스트들을 보여준다.
+      // 2-1. 하위 페이지의 리스트들을 보여준다.
       // 선택한 페이지의 아이디를 다시 clientId에 재할당
       clientId = await getLowIdBySelection();
     }
@@ -97,7 +98,6 @@ const notionServer = async () => {
 
     // 4. 자식 페이지를 생성한다.
     const childPageId = await createPage(clientId, childTitle);
-    console.log(`자식 페이지 ID: ${childPageId}`);
 
     // 5. 손자 페이지의 이름을 설정한다.
     const grandchildTitle = await askQuestion(
@@ -105,8 +105,8 @@ const notionServer = async () => {
     );
 
     // 6. 손자 페이지를 생성한다.
-    const grandchildPageId = await createPage(childPageId, grandchildTitle);
-    console.log(`손자 페이지 ID: ${grandchildPageId}`);
+    await createPage(childPageId, grandchildTitle);
+
     rl.close();
   } catch (error) {
     console.error(error.message);
@@ -114,7 +114,6 @@ const notionServer = async () => {
   }
 };
 
-// notionPageId();
 notionServer();
 
 module.exports = app;
