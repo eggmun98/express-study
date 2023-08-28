@@ -1,6 +1,6 @@
 const getLatestNotionId = require("./getLatestNotionId");
 const axios = require("axios");
-const { createPayload01 } = require("./payload");
+const { createPayload01 } = require("./payload2");
 require("dotenv").config(); // 환경변수 설정 라이브러리
 const config = require("../public/config");
 

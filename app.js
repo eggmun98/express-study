@@ -1,80 +1,41 @@
 const express = require("express");
-const axios = require("axios");
-const { CLIENT_IDS } = require("./public/config");
+const app = express();
 const rl = require("./public/utils");
 const createPage = require("./src/createPage");
-
-require("dotenv").config();
-
-const app = express();
-app.use(express.json());
-
-const askQuestion = (prompt) =>
-  new Promise((resolve) => rl.question(prompt, resolve));
-
-const displayOptions = (options) =>
-  options.map((option, index) => ` ${index}.${option}`).join(", ");
-
-const getSelection = async (message, options) => {
-  const promptMessage = `${message} ${displayOptions(options)}`;
-  const selection = await askQuestion(promptMessage);
-
-  if (!options[selection]) {
-    console.error("잘못된 선택입니다.");
-    rl.close();
-    process.exit();
-  }
-
-  return options[selection];
-};
-
-const notionPageId = async () => {
-  try {
-    const response = await axios.get(
-      `https://api.notion.com/v1/blocks/${process.env.NOTION_PAGE_ID_C}/children`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
-          "Notion-Version": "2022-06-28",
-        },
-      }
-    );
-    return response.data.results.map((el) => ({
-      id: el.id,
-      title: el.child_page.title,
-    }));
-  } catch (error) {
-    console.error(error.message);
-  }
-};
+const notionPageId = require("./src/notionPageId");
+const getClientIdBySelection = require("./src/getClientIdBySelection");
+const getLowIdBySelection = require("./src/getLowIdBySelection");
+const askQuestion = require("./src/askQuestion");
 
 const notionServer = async () => {
-  console.log("서버가 실행이되었습니다.");
   try {
-    const clientId = await getSelection(
-      "회사를 선택하세요:",
-      Object.keys(CLIENT_IDS)
-    );
-    const pageLevel = await getSelection("페이지 레벨을 선택하세요:", [
-      "상위 페이지",
-      "하위 페이지",
-    ]);
+    // 1. 최상위 페이지들을 선택하게한다 . => 유저가 선택한 페이지의 아이디를 저장한다.
+    let clientId = await getClientIdBySelection(); // 이 아이디 기준으로 페이지 생성
 
-    let selectedId = clientId;
-    if (pageLevel === "하위 페이지") {
-      const page = await notionPageId();
-      selectedId = await getSelection(
-        "하위 페이지의 번호를 선택하세요:",
-        page.map((p) => p.title)
-      );
+    // 2. 최상위 페이지에서 생성할 지 아니면 하위 페이지에서 생성할 지 선택하게 한다.
+    const userPick = await askQuestion("1: 상위 페이지, 2: 하위 페이지 ");
+
+    if (userPick === "2") {
+      // 2-1. 유저가 선택한 상위 페이지의 이름과 이이디를 가져오기
+      const page = await notionPageId(clientId);
+
+      // 2-2. 하위 페이지의 리스트들을 보여준다. => 그리고 선택하게 한다.
+      // 선택한 페이지의 아이디를 다시 clientId에 재할당
+      clientId = await getLowIdBySelection(page);
     }
 
+    // 3. 자식 페이지의 이름을 설정한다.
     const childTitle = await askQuestion("자식 페이지의 이름을 입력하세요: ");
-    const childPageId = await createPage(selectedId, childTitle);
 
+    // 4. 자식 페이지를 생성한다.
+    const childPageId = await createPage(clientId, childTitle);
+
+    // 5. 손자 페이지의 이름을 설정한다.
     const grandchildTitle = await askQuestion(
       "손자 페이지의 이름을 입력하세요: "
     );
+
+    // 6. 손자 페이지를 생성한다.
     await createPage(childPageId, grandchildTitle);
 
     rl.close();
